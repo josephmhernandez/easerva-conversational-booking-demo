@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "../shared/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "lib/test-utils/**",
+    "jest.config.js",
+    "jest.setup.js",
+    "jest.setup.ts"
+  ]
+}

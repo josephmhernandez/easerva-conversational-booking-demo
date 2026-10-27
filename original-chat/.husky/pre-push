@@ -1,0 +1,27 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run frontend build check
+echo "🔨 Building frontend..."
+cd frontend && npm run build
+if [ $? -ne 0 ]; then
+  echo "❌ Frontend build failed! Please fix the build errors before pushing."
+  echo "💡 To bypass this check, use: git push --no-verify"
+  exit 1
+fi
+echo "✅ Frontend build successful!"
+cd ..
+
+# Run existing checks
+echo "🧪 Running tests..."
+npm test
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed! Please fix the test errors before pushing."
+  echo "💡 To bypass this check, use: git push --no-verify"
+  exit 1
+fi
+echo "✅ Tests passed!"
+
+echo "✅ All checks passed! Proceeding with push..."
+
+

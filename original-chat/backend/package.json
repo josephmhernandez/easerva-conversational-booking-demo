@@ -1,0 +1,46 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "dist/server.js",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "notprebuild": "echo '🔧 Prebuild: Setting up shared folder...' && mkdir -p shared && cp -r ../shared/* ./shared/ 2>/dev/null || echo '⚠️  Copy step completed with warnings'",
+    "build": "echo '🏗️  Starting TypeScript compilation...' && tsc && echo '✅ TypeScript compilation finished'",
+    "start": "node dist/server.js",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.56.0",
+    "@instructor-ai/instructor": "^1.7.0",
+    "@modelcontextprotocol/sdk": "^1.15.1",
+    "@supabase/supabase-js": "^2.50.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.2",
+    "xstate": "^5.19.2",
+    "openai": "6.10.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.0.3",
+    "@types/ws": "^8.18.1",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.3"
+  }
+}

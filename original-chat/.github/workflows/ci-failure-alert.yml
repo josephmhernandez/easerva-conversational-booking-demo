@@ -1,0 +1,65 @@
+name: CI Failure Alert
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+jobs:
+  alert:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    permissions:
+      actions: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord failure alert
+        uses: actions/github-script@v7
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+
+            const jobsResp = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: run.id,
+            });
+            const failedJobs = jobsResp.data.jobs
+              .filter(j => j.conclusion === 'failure')
+              .map(j => `• ${j.name}`)
+              .join('\n') || '• (unknown)';
+
+            const prs = run.pull_requests || [];
+            const prInfo = prs.length > 0
+              ? ` | PR [#${prs[0].number}](https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${prs[0].number})`
+              : '';
+
+            const message = [
+              `🚨 **CI Failure** | \`${context.repo.owner}/${context.repo.repo}\`${prInfo}`,
+              `**Workflow:** ${run.name}`,
+              `**Branch:** \`${run.head_branch}\``,
+              `**Commit:** \`${run.head_sha.slice(0, 7)}\``,
+              `**Failed jobs:**`,
+              failedJobs,
+              `🔗 [View run](${run.html_url})`,
+            ].join('\n');
+
+            const channelId = '1477488349471313960';
+            const resp = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ content: message }),
+            });
+
+            if (!resp.ok) {
+              const body = await resp.text();
+              core.setFailed(`Discord API error ${resp.status}: ${body}`);
+            } else {
+              console.log('Alert posted to #alerts');
+            }

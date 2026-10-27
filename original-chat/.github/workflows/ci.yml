@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, prod]
+  push:
+    branches: [main, prod]
+
+jobs:
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --project tsconfig.ci.json --noEmit
+
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --coverage
+        env:
+          # Stub required env vars so Next.js/Supabase imports don't crash in test env
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+          if-no-files-found: warn
+
+      - name: Comment coverage summary on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'frontend/coverage/coverage-summary.json';
+            if (!fs.existsSync(path)) {
+              core.info('coverage-summary.json not found, skipping comment');
+              return;
+            }
+            const summary = JSON.parse(fs.readFileSync(path, 'utf8')).total;
+            const body = [
+              '## Test Coverage Summary',
+              '',
+              `- Lines: ${summary.lines.pct}% (${summary.lines.covered}/${summary.lines.total})`,
+              `- Statements: ${summary.statements.pct}% (${summary.statements.covered}/${summary.statements.total})`,
+              `- Functions: ${summary.functions.pct}% (${summary.functions.covered}/${summary.functions.total})`,
+              `- Branches: ${summary.branches.pct}% (${summary.branches.covered}/${summary.branches.total})`,
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const marker = '<!-- coverage-summary -->';
+            const existing = comments.data.find(c => c.user?.type === 'Bot' && c.body?.includes(marker));
+            const commentBody = `${marker}\n${body}`;
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body: commentBody });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body: commentBody });
+            }
