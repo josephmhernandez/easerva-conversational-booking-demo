@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Low-cost WebSocket backend for the Easerva conversational booking demo
+
+Resources:
+  SessionTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: connectionId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: connectionId
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  BookingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: index.handler
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      MemorySize: 256
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref SessionTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SessionTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${BookingWebSocket}/*"
+
+  BookingWebSocket:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: easerva-conversational-booking-demo
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+
+  BookingIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref BookingWebSocket
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BookingFunction.Arn}/invocations"
+
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref BookingWebSocket
+      RouteKey: $connect
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${BookingIntegration}"
+
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref BookingWebSocket
+      RouteKey: $disconnect
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${BookingIntegration}"
+
+  SendMessageRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref BookingWebSocket
+      RouteKey: sendMessage
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${BookingIntegration}"
+
+  ResetRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref BookingWebSocket
+      RouteKey: reset
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${BookingIntegration}"
+
+  DefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref BookingWebSocket
+      RouteKey: $default
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${BookingIntegration}"
+
+  DemoStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref BookingWebSocket
+      StageName: demo
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+
+  InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref BookingFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${BookingWebSocket}/*"
+
+Outputs:
+  WebSocketUrl:
+    Value: !Sub "wss://${BookingWebSocket}.execute-api.${AWS::Region}.${AWS::URLSuffix}/demo"
+  SessionTableName:
+    Value: !Ref SessionTable
