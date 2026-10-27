@@ -9,12 +9,13 @@ A public, synthetic reconstruction of the real-time conversational booking subsy
 ## What it demonstrates
 
 - A real API Gateway WebSocket connection
+- Dynamic Anthropic Claude responses through Amazon Bedrock
 - Typed, event-oriented response concepts (`ai.delta`, provider recommendations, time slots, confirmation)
 - Stateful multi-step service discovery
 - DynamoDB session state with one-hour expiry
 - Serverless infrastructure with no idle compute charge
 
-The public demo deliberately uses a deterministic workflow and synthetic providers. It does not expose Easerva customers, production booking data, private prompts, or production credentials. The original system integrated Claude, MCP tools, XState, Supabase persistence, authentication, and calendar booking.
+The public demo uses Claude for natural conversation around a bounded state machine and synthetic providers. Structured provider/time events remain deterministic so the demo cannot invent a real business or appointment. It does not expose Easerva customers, production booking data, private prompts, or production credentials. The original system integrated Claude, MCP tools, XState, Supabase persistence, authentication, and calendar booking.
 
 ## Architecture
 
@@ -25,7 +26,9 @@ Static browser client
 API Gateway WebSocket API
         │
         ▼
-AWS Lambda ─── DynamoDB session state
+AWS Lambda ─── Anthropic Claude on Bedrock
+        │
+        └────── DynamoDB session state
 ```
 
 ## Local verification
@@ -47,7 +50,7 @@ sam deploy --stack-name easerva-booking-demo --resolve-s3 --capabilities CAPABIL
 
 ## Privacy
 
-No registration is required. Inputs are limited to 500 characters. The public demo stores only a connection identifier and workflow step, with a one-hour DynamoDB TTL.
+No registration is required. Inputs are limited to 500 characters. The public demo stores a short recent-message window with the connection and workflow state; the entire record expires through a one-hour DynamoDB TTL. No payment or real booking is created.
 
 ## License
 
