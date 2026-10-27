@@ -1,0 +1,12 @@
+{
+  "name": "easerva-booking-demo-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {"test": "node --test"},
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.922.0",
+    "@aws-sdk/client-dynamodb": "^3.922.0",
+    "@aws-sdk/lib-dynamodb": "^3.922.0"
+  }
+}
