@@ -60,7 +60,7 @@ exports.handler = async (event) => {
   const client = new ApiGatewayManagementApiClient({ endpoint: `https://${domainName}/${stage}` });
 
   if (routeKey === "$connect") {
-    await db.send(new PutCommand({ TableName: tableName, Item: { connectionId, state: 0, history: [], expiresAt: expiry() } }));
+    await db.send(new PutCommand({ TableName: tableName, Item: { connectionId, state: 0, turnCount: 0, history: [], expiresAt: expiry() } }));
     return response();
   }
   if (routeKey === "$disconnect") {
@@ -68,7 +68,7 @@ exports.handler = async (event) => {
     return response();
   }
   if (routeKey === "reset") {
-    await db.send(new PutCommand({ TableName: tableName, Item: { connectionId, state: 0, history: [], expiresAt: expiry() } }));
+    await db.send(new PutCommand({ TableName: tableName, Item: { connectionId, state: 0, turnCount: 0, history: [], expiresAt: expiry() } }));
     await send(client, connectionId, { type: "session.reset" });
     return response();
   }
@@ -83,7 +83,12 @@ exports.handler = async (event) => {
 
   const current = await db.send(new GetCommand({ TableName: tableName, Key: { connectionId } }));
   const state = Number(current.Item?.state || 0);
+  const turnCount = Number(current.Item?.turnCount || 0);
   const history = Array.isArray(current.Item?.history) ? current.Item.history : [];
+  if (turnCount >= 12) {
+    await send(client, connectionId, { type: "error", code: "SESSION_LIMIT", message: "This demo session reached its 12-message limit. Reset the demo to start over." });
+    return response();
+  }
   const result = nextStep(state, text);
   let reply = result.message;
   try {
@@ -92,7 +97,7 @@ exports.handler = async (event) => {
     console.error("Claude response failed; using workflow fallback", error?.name || error);
   }
   const updatedHistory = [...history, { role: "user", text }, { role: "assistant", text: reply }].slice(-8);
-  await db.send(new PutCommand({ TableName: tableName, Item: { connectionId, state: result.state, history: updatedHistory, expiresAt: expiry() } }));
+  await db.send(new PutCommand({ TableName: tableName, Item: { connectionId, state: result.state, turnCount: turnCount + 1, history: updatedHistory, expiresAt: expiry() } }));
   await send(client, connectionId, { type: "message.accepted", messageId: crypto.randomUUID(), ts: new Date().toISOString() });
   await stream(client, connectionId, reply);
   if (result.event) await send(client, connectionId, result.event);

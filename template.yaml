@@ -26,6 +26,7 @@ Resources:
       Architectures: [arm64]
       MemorySize: 256
       Timeout: 15
+      ReservedConcurrentExecutions: 2
       Environment:
         Variables:
           TABLE_NAME: !Ref SessionTable
