@@ -4,6 +4,8 @@ A public, synthetic reconstruction of the real-time conversational booking subsy
 
 **Live demo:** <https://josephmhernandez.com/demos/easerva/>
 
+![Completed conversational booking demo](docs/demo.png)
+
 ## What it demonstrates
 
 - A real API Gateway WebSocket connection
