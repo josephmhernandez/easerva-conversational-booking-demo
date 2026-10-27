@@ -13,8 +13,8 @@
     <section class="intro">
       <p class="eyebrow">EASERVA · RETIRED FEATURE RECONSTRUCTION</p>
       <h1>Find and book a service through conversation.</h1>
-      <p>This sandbox reconstructs the event-driven flow of Easerva’s original AI booking assistant using synthetic providers. It demonstrates real WebSocket transport and stateful tool-style results without creating an actual appointment.</p>
-      <div class="architecture"><span>Browser</span><b>→</b><span>API Gateway WebSocket</span><b>→</b><span>Lambda</span><b>→</b><span>DynamoDB</span></div>
+      <p>This sandbox reconstructs the event-driven flow of Easerva’s original AI booking assistant using synthetic providers. Each message travels over a real WebSocket to an AWS backend, where Anthropic Claude responds within a stateful booking workflow.</p>
+      <div class="architecture"><span>Browser</span><b>→</b><span>WebSocket</span><b>→</b><span>Claude on Bedrock</span><b>→</b><span>DynamoDB</span></div>
     </section>
     <section class="chat-shell">
       <div class="chat-head"><div><strong>Easerva assistant</strong><small id="status">Connecting…</small></div><button id="reset" type="button">Reset demo</button></div>
@@ -23,6 +23,6 @@
       </div>
       <form id="chat-form"><label class="sr-only" for="input">Message</label><input id="input" maxlength="500" autocomplete="off" placeholder="Describe the service you need…"><button type="submit">Send <span>↗</span></button></form>
     </section>
-    <p class="notice">Synthetic providers and appointment times. No personal data is required or retained beyond a one-hour connection record.</p>
+    <p class="notice">Synthetic providers and appointment times. No payment is accepted and no real appointment is made. Messages expire with the one-hour demo session.</p>
   </main>
 </body></html>

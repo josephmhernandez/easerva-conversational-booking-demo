@@ -29,6 +29,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref SessionTable
+          BEDROCK_MODEL_ID: us.anthropic.claude-haiku-4-5-20251001-v1:0
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SessionTable
@@ -36,6 +37,11 @@ Resources:
             - Effect: Allow
               Action: execute-api:ManageConnections
               Resource: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${BookingWebSocket}/*"
+            - Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource:
+                - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+                - !Sub "arn:${AWS::Partition}:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
 
   BookingWebSocket:
     Type: AWS::ApiGatewayV2::Api
