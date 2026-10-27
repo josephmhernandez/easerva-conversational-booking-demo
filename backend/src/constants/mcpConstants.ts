@@ -1,0 +1,1 @@
+export const STREAM_TOOL_CHECK_CHUNK_COUNT = 25;

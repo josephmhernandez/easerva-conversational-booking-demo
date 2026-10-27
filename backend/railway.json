@@ -1,0 +1,33 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "nixpacksPlan": {
+      "phases": {
+        "install": {
+          "dependsOn": ["setup"],
+          "cmds": ["npm install"]
+        },
+        "build": {
+          "dependsOn": ["install"],
+          "cmds": [
+            "echo '🔍 Checking if shared folder exists...'",
+            "ls -la ../shared || echo '❌ ../shared not found'",
+            "echo '📁 Creating shared folder and copying files...'",
+            "mkdir -p shared && cp -r ../shared/* ./shared/ 2>/dev/null || echo '⚠️  Copy failed, but continuing...'",
+            "echo '✅ Files copied. Contents:'",
+            "ls -la ./shared || echo '❌ ./shared not found'",
+            "echo '🏗️  Running TypeScript build...'",
+            "npm run build",
+            "echo '📦 Build complete. Checking dist folder:'",
+            "ls -la ./dist || echo '❌ ./dist not found'",
+            "echo '🎯 Looking for server.js:'",
+            "find . -name 'server.js' -type f || echo '❌ server.js not found anywhere'"
+          ]
+        }
+      }
+    }
+  },
+  "deploy": {
+    "startCommand": "npm start"
+  }
+}

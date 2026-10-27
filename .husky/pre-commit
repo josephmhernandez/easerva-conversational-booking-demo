@@ -1,0 +1,20 @@
+
+set -euo pipefail
+
+echo "Running pre-commit checks..."
+
+# TypeScript check
+cd frontend && npx tsc --noEmit
+echo "✅ TypeScript OK"
+
+# ESLint check (match CI behavior: fail on errors, allow warnings)
+npx next lint
+echo "✅ ESLint OK"
+
+cd ..
+
+# Run existing checks
+npm test
+npx lint-staged
+
+echo "All pre-commit checks passed."
