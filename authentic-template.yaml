@@ -1,0 +1,337 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Original Easerva Next.js and WebSocket/XState server on ECS Fargate
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PublicSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+  ClusterArn:
+    Type: String
+  LoadBalancerArn:
+    Type: String
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+  LoadBalancerDnsName:
+    Type: String
+  LoadBalancerCanonicalZoneId:
+    Type: String
+  CertificateArn:
+    Type: String
+  HostedZoneId:
+    Type: String
+  SupabaseUrl:
+    Type: String
+  SupabaseAnonKey:
+    Type: String
+    NoEcho: true
+  SupabaseServiceSecretArn:
+    Type: String
+  JwtSecretArn:
+    Type: String
+  BuildSourceBucket:
+    Type: String
+  BuildSourceKey:
+    Type: String
+    Default: easerva/original-chat.zip
+  DesiredCount:
+    Type: Number
+    Default: 0
+    AllowedValues: [0, 1]
+  ImageTag:
+    Type: String
+    Default: authentic-v5
+
+Resources:
+  Repository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ImageScanningConfiguration: {ScanOnPush: true}
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Keep five images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":5},"action":{"type":"expire"}}]}'
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Easerva authentic demo service
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3001
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  LoadBalancerHttpsIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 0.0.0.0/0
+      Description: HTTPS for the public Easerva demo
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: ecs-tasks.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: ReadDemoSecrets
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: [!Ref SupabaseServiceSecretArn, !Ref JwtSecretArn]
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: ecs-tasks.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ClaudeThroughBedrock
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+                  - !Sub "arn:${AWS::Partition}:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: jmh-easerva-authentic-demo
+      Cpu: "512"
+      Memory: "1024"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: easerva
+          Image: !Sub "${Repository.RepositoryUri}:${ImageTag}"
+          Essential: true
+          EntryPoint: ["/bin/bash", "-c"]
+          Command: ["./container-start.sh"]
+          PortMappings:
+            - {ContainerPort: 3000, Protocol: tcp}
+            - {ContainerPort: 3001, Protocol: tcp}
+          Environment:
+            - {Name: PORT, Value: "3001"}
+            - {Name: NODE_ENV, Value: production}
+            - {Name: AWS_REGION, Value: !Ref AWS::Region}
+            - {Name: USE_BEDROCK, Value: "true"}
+            - {Name: BEDROCK_MODEL_ID, Value: us.anthropic.claude-haiku-4-5-20251001-v1:0}
+            - {Name: FRONTEND_URL, Value: "https://chat-demo.josephmhernandez.com"}
+            - {Name: NEXT_PUBLIC_APP_URL, Value: "https://chat-demo.josephmhernandez.com"}
+            - {Name: NEXT_PUBLIC_BACKEND_URL, Value: "https://chat-demo.josephmhernandez.com"}
+            - {Name: NEXT_PUBLIC_WS_URL, Value: "wss://chat-demo.josephmhernandez.com"}
+            - {Name: BACKEND_URL, Value: "http://127.0.0.1:3001"}
+            - {Name: SUPABASE_URL, Value: !Ref SupabaseUrl}
+            - {Name: NEXT_PUBLIC_SUPABASE_URL, Value: !Ref SupabaseUrl}
+            - {Name: NEXT_PUBLIC_SUPABASE_ANON_KEY, Value: !Ref SupabaseAnonKey}
+            - {Name: NEXT_PUBLIC_ENVIRONMENT, Value: production}
+          Secrets:
+            - {Name: SUPABASE_SERVICE_ROLE_KEY, ValueFrom: !Ref SupabaseServiceSecretArn}
+            - {Name: JWT_WEBSOCKET_SECRET, ValueFrom: !Ref JwtSecretArn}
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: easerva
+          HealthCheck:
+            Command: [CMD-SHELL, "node -e \"fetch('http://127.0.0.1:3001/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+
+  FrontendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      TargetType: ip
+      VpcId: !Ref VpcId
+      Port: 3000
+      Protocol: HTTP
+      HealthCheckPath: /
+      Matcher: {HttpCode: "200-399"}
+      TargetGroupAttributes:
+        - {Key: deregistration_delay.timeout_seconds, Value: "15"}
+
+  BackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      TargetType: ip
+      VpcId: !Ref VpcId
+      Port: 3001
+      Protocol: HTTP
+      HealthCheckPath: /
+      Matcher: {HttpCode: "200"}
+      TargetGroupAttributes:
+        - {Key: deregistration_delay.timeout_seconds, Value: "15"}
+        - {Key: stickiness.enabled, Value: "true"}
+        - {Key: stickiness.type, Value: lb_cookie}
+        - {Key: stickiness.lb_cookie.duration_seconds, Value: "86400"}
+
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancerArn
+      Port: 443
+      Protocol: HTTPS
+      Certificates: [{CertificateArn: !Ref CertificateArn}]
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig: {StatusCode: "404", ContentType: text/plain, MessageBody: Not found}
+
+  BackendRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HttpsListener
+      Priority: 10
+      Conditions:
+        - Field: host-header
+          HostHeaderConfig: {Values: [chat-demo.josephmhernandez.com]}
+        - Field: path-pattern
+          PathPatternConfig: {Values: [/ws, "/api/chat/*"]}
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
+  FrontendRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HttpsListener
+      Priority: 20
+      Conditions:
+        - Field: host-header
+          HostHeaderConfig: {Values: [chat-demo.josephmhernandez.com]}
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref FrontendTargetGroup
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn: [BackendRule, FrontendRule]
+    Properties:
+      Cluster: !Ref ClusterArn
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 0
+        MaximumPercent: 100
+      EnableExecuteCommand: false
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: [!Ref ServiceSecurityGroup]
+          Subnets: !Ref PublicSubnets
+      TaskDefinition: !Ref TaskDefinition
+      LoadBalancers:
+        - ContainerName: easerva
+          ContainerPort: 3000
+          TargetGroupArn: !Ref FrontendTargetGroup
+        - ContainerName: easerva
+          ContainerPort: 3001
+          TargetGroupArn: !Ref BackendTargetGroup
+      Tags:
+        - {Key: PortfolioDemo, Value: EaservaOriginalChat}
+
+  DemoDns:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: chat-demo.josephmhernandez.com
+      Type: A
+      AliasTarget:
+        DNSName: !Ref LoadBalancerDnsName
+        HostedZoneId: !Ref LoadBalancerCanonicalZoneId
+        EvaluateTargetHealth: false
+
+  BuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: codebuild.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BuildEaservaImage
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - {Effect: Allow, Action: [logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents], Resource: "*"}
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${BuildSourceBucket}/${BuildSourceKey}"
+              - {Effect: Allow, Action: ecr:GetAuthorizationToken, Resource: "*"}
+              - Effect: Allow
+                Action: [ecr:BatchCheckLayerAvailability, ecr:CompleteLayerUpload, ecr:GetDownloadUrlForLayer, ecr:InitiateLayerUpload, ecr:PutImage, ecr:UploadLayerPart]
+                Resource: !GetAtt Repository.Arn
+
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      ServiceRole: !GetAtt BuildRole.Arn
+      Artifacts: {Type: NO_ARTIFACTS}
+      Environment:
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/standard:7.0
+        Type: LINUX_CONTAINER
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - {Name: REPOSITORY_URI, Value: !GetAtt Repository.RepositoryUri}
+          - {Name: IMAGE_TAG, Value: !Ref ImageTag}
+          - {Name: APP_URL, Value: "https://chat-demo.josephmhernandez.com"}
+          - {Name: SUPABASE_URL, Value: !Ref SupabaseUrl}
+          - {Name: SUPABASE_ANON_KEY, Value: !Ref SupabaseAnonKey}
+      Source:
+        Type: S3
+        Location: !Sub "${BuildSourceBucket}/${BuildSourceKey}"
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+            build:
+              commands:
+                - docker build --build-arg NEXT_PUBLIC_APP_URL=$APP_URL --build-arg NEXT_PUBLIC_BACKEND_URL=$APP_URL --build-arg NEXT_PUBLIC_WS_URL=wss://chat-demo.josephmhernandez.com --build-arg NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY --build-arg NEXT_PUBLIC_ENVIRONMENT=production -t $REPOSITORY_URI:$IMAGE_TAG .
+                - docker push $REPOSITORY_URI:$IMAGE_TAG
+
+Outputs:
+  DemoUrl: {Value: "https://chat-demo.josephmhernandez.com/chat"}
+  RepositoryUri: {Value: !GetAtt Repository.RepositoryUri}
+  BuildProjectName: {Value: !Ref BuildProject}
+  ServiceName: {Value: !GetAtt Service.Name}

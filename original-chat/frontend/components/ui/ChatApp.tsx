@@ -258,8 +258,8 @@ export function ChatApp({ initialSession, initialMessages }: ChatAppProps) {
             <div className="w-16 h-16 bg-gradient-to-r from-orange-400 to-pink-400 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-white font-bold text-lg">B</span>
             </div>
-            <p className="text-lg font-medium mb-2">Welcome to Easerva! 🏡</p>
-            <p className="text-sm">{`I'm here to help you find and book the perfect home viewing.`}</p>
+            <p className="text-lg font-medium mb-2">Welcome to Easerva! 👋</p>
+            <p className="text-sm">{`I'm here to help you find and book local services.`}</p>
             <p className="text-sm mt-2">{`Start by telling me what you're looking for!`}</p>
           </div>
         ) : (
@@ -440,28 +440,28 @@ export function ChatApp({ initialSession, initialMessages }: ChatAppProps) {
             variant="outline"
             size="sm"
             className="bg-white text-gray-700 border-gray-200 hover:bg-gray-50 whitespace-nowrap rounded-full"
-            onClick={() => setChatInput("I'm looking for a 3 bedroom house")}
+            onClick={() => setChatInput("Printing consultation in Fort Worth")}
             disabled={!isConnected && isBusy}
           >
-            🏠 3 bedroom house
+            🖨️ Printing in Fort Worth
           </Button>
           <Button
             variant="outline"
             size="sm"
             className="bg-white text-gray-700 border-gray-200 hover:bg-gray-50 whitespace-nowrap rounded-full"
-            onClick={() => setChatInput("Downtown area under $500k")}
+            onClick={() => setChatInput("Pet services near Plano")}
             disabled={!isConnected && isBusy}
           >
-            📍 Downtown under $500k
+            🐾 Pet services near Plano
           </Button>
           <Button
             variant="outline"
             size="sm"
             className="bg-white text-gray-700 border-gray-200 hover:bg-gray-50 whitespace-nowrap rounded-full"
-            onClick={() => setChatInput("Schedule a viewing")}
+            onClick={() => setChatInput("What services can you help me book?")}
             disabled={!isConnected && isBusy}
           >
-            📅 Schedule viewing
+            📅 Explore services
           </Button>
         </div>
       </div>

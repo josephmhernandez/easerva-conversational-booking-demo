@@ -47,6 +47,7 @@ export function getServices(): { id: string; description: string }[] {
     { id: "Wellness and Counseling", description: "Wellness and counseling services" },
     { id: "Child Care and Family Services", description: "Child care and family services" },
     { id: "Photography", description: "Photography and videography services" },
+    { id: "Printing Service", description: "Printing, signage, and consultation services" },
     { id: "Art and Design", description: "Art and design services" },
     { id: "Other", description: "Other services and consulting" },
   ];

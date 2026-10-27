@@ -257,7 +257,7 @@ const STATE_SPECIFIC_TOOLS: Record<string, any[]> = {
           limit_results: { type: "number", default: 20 },
           offset_results: { type: "number", default: 0 },
         },
-        required: ["search_query", "service_category", "user_location"],
+        required: ["search_query", "service_category"],
       },
     },
   ],

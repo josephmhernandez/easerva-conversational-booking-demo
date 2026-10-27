@@ -736,32 +736,11 @@ async function handleUserMessage(
     // 3) Persist + emit acceptance
     await emitPersisted(ws, sessionId, "message.accepted", { messageId });
 
-    // 4) start ai stream
-    const streamId = crypto.randomUUID();
-    let finalText = "";
-
+    // 4) Start the AI stream. ClaudeMCPClient owns the streamed assistant
+    // message lifecycle: it persists the placeholder, emits deltas, finalizes
+    // the database row, and emits the matching ai.done event.
     await claudeClients[ws.userId].processUserMessage(ws, text, actor, []);
-
-    if (finalText.trim()) {
-      // console.log(`[handleUserMessage] 💾 Persisting AI response to chat_messages DB`);
-      await chatMessagesDB.addMessage(sessionId, "assistant", finalText);
-      // console.log(`[handleUserMessage] ✅ AI response persisted to DB`);
-    } else {
-      console.warn(`[handleUserMessage] ⚠️ AI response was empty, skipping DB persistence`);
-    }
-
-    await emitPersisted(
-      ws,
-      sessionId,
-      "ai.done",
-      {
-        streamId,
-        final: finalText,
-        status: "ok",
-      },
-      { streamId }
-    );
-    console.log(`[handleUserMessage] ✅ AI done emitted successfully`);
+    console.log(`[handleUserMessage] ✅ AI stream completed successfully`);
   } catch (error) {
     console.error(
       `[handleUserMessage] ❌ Error during message processing for session ${sessionId}:`,

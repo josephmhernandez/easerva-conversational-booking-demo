@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { AnthropicBedrock } from "@anthropic-ai/bedrock-sdk";
 import { ActorRef } from "xstate";
 import { STREAM_TOOL_CHECK_CHUNK_COUNT } from "../constants/mcpConstants";
 import { chatMessagesDB } from "../database/chat-messages";
@@ -50,11 +51,16 @@ export class ClaudeMCPClient {
   // "claude-3-5-sonnet-20241022"
   // claude-opus-4-20250514
   // "claude-3-7-sonnet-20250219"
-  constructor(apiKey?: string, model = "claude-3-7-sonnet-20250219") {
+  constructor(
+    apiKey?: string,
+    model = process.env.BEDROCK_MODEL_ID || "claude-3-7-sonnet-20250219"
+  ) {
     console.log("🤖 Initializing Claude MCP Client");
-    this.anthropic = new Anthropic({
-      apiKey: apiKey || process.env.CLAUDE_API_KEY,
-    });
+    this.anthropic = process.env.USE_BEDROCK === "true"
+      ? (new AnthropicBedrock({
+          awsRegion: process.env.AWS_REGION || "us-east-1",
+        }) as unknown as Anthropic)
+      : new Anthropic({apiKey: apiKey || process.env.CLAUDE_API_KEY});
     this.model = model;
   }
 

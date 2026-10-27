@@ -19,6 +19,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "0.22.4",
     "@anthropic-ai/sdk": "^0.56.0",
     "@instructor-ai/instructor": "^1.7.0",
     "@modelcontextprotocol/sdk": "^1.15.1",
@@ -27,10 +28,10 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "openai": "6.10.0",
     "uuid": "^11.1.0",
     "ws": "^8.18.2",
     "xstate": "^5.19.2",
-    "openai": "6.10.0",
     "zod": "3.25.76"
   },
   "devDependencies": {

@@ -14,12 +14,7 @@ if (!supabaseServiceKey) {
   throw new Error("SUPABASE_SERVICE_ROLE_KEY environment variable is required");
 }
 
-// Log configuration (without exposing secrets)
-console.log("✅ [Supabase] Initializing client");
-console.log(`   URL: ${supabaseUrl}`);
-console.log(
-  `   Service Key: ${supabaseServiceKey.substring(0, 10)}...${supabaseServiceKey.substring(supabaseServiceKey.length - 4)}`
-);
+console.log("✅ [Supabase] Initializing client with configured service credentials");
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
