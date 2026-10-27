@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A live WebSocket demonstration of Easerva's conversational booking architecture.">
+  <title>Easerva Conversational Booking Demo</title>
+  <link rel="stylesheet" href="style.css"><script src="config.js"></script><script src="app.js" defer></script>
+</head><body>
+  <header><a href="/">← Joseph Hernandez</a><span class="badge">LIVE AWS WEBSOCKET DEMO</span><a href="https://github.com/josephmhernandez/easerva-conversational-booking-demo">Source ↗</a></header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">EASERVA · RETIRED FEATURE RECONSTRUCTION</p>
+      <h1>Find and book a service through conversation.</h1>
+      <p>This sandbox reconstructs the event-driven flow of Easerva’s original AI booking assistant using synthetic providers. It demonstrates real WebSocket transport and stateful tool-style results without creating an actual appointment.</p>
+      <div class="architecture"><span>Browser</span><b>→</b><span>API Gateway WebSocket</span><b>→</b><span>Lambda</span><b>→</b><span>DynamoDB</span></div>
+    </section>
+    <section class="chat-shell">
+      <div class="chat-head"><div><strong>Easerva assistant</strong><small id="status">Connecting…</small></div><button id="reset" type="button">Reset demo</button></div>
+      <div id="messages" class="messages" aria-live="polite">
+        <div class="message assistant"><div class="avatar">E</div><div><p>Tell me what kind of professional service you’re looking for. Try “I need help defining my brand.”</p><time>Demo assistant</time></div></div>
+      </div>
+      <form id="chat-form"><label class="sr-only" for="input">Message</label><input id="input" maxlength="500" autocomplete="off" placeholder="Describe the service you need…"><button type="submit">Send <span>↗</span></button></form>
+    </section>
+    <p class="notice">Synthetic providers and appointment times. No personal data is required or retained beyond a one-hour connection record.</p>
+  </main>
+</body></html>
