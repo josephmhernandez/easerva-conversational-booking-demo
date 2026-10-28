@@ -2,8 +2,22 @@ import { supabase } from "../auth/supabase";
 import { Company, TimeSlot } from "../mcp/machines/types";
 import { Card } from "../shared/protocol";
 import { ChatMessage } from "./types";
+import { toModelHistory, type ModelHistoryEntry } from "../mcp/conversation-history";
 
 export const chatMessagesDB = {
+  async getModelHistory(sessionId: string, limit = 20): Promise<ModelHistoryEntry[]> {
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .select("*")
+      .eq("chat_session_id", sessionId)
+      .order("timestamp", { ascending: false })
+      .order("sequence_number", { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return toModelHistory(((data || []) as ChatMessage[]).reverse(), limit);
+  },
+
   // Get messages for session with pagination
   async getMessages(
     sessionId: string,

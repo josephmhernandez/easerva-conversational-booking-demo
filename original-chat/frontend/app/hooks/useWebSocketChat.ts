@@ -559,17 +559,19 @@ export const useWebSocketChat = (options?: {
         case "cards.search.results": {
           const cards = e.cards as Card[];
           setCards(cards);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `cards_${Date.now()}`,
-              role: "system",
-              content: "Here are some cards that match your needs:",
-              timestamp: new Date(),
-              message_data_type: "CARD",
-              data: JSON.stringify(cards),
-            },
-          ]);
+          if (!e.restored) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `cards_${Date.now()}`,
+                role: "system",
+                content: "Here are some cards that match your needs:",
+                timestamp: new Date(),
+                message_data_type: "CARD",
+                data: JSON.stringify(cards),
+              },
+            ]);
+          }
           break;
         }
         case "card.selection.confirmed": {
@@ -605,15 +607,17 @@ export const useWebSocketChat = (options?: {
         case "time.slots.recommendations": {
           const slots = e.timeSlots as TimeSlot[];
           setTimeSlots(slots);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `time_slots_${Date.now()}`,
-              role: "system",
-              content: "Here are some available times:",
-              timestamp: new Date(),
-            },
-          ]);
+          if (!e.restored) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `time_slots_${Date.now()}`,
+                role: "system",
+                content: "Here are some available times:",
+                timestamp: new Date(),
+              },
+            ]);
+          }
           break;
         }
         case "company.selection.confirmed": {

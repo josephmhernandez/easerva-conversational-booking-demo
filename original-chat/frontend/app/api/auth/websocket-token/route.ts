@@ -21,7 +21,9 @@ export async function POST(req: Request) {
     let resolvedUserId = user?.id as string | undefined;
     let newGuestIdToSet: string | null = null;
     if (!resolvedUserId) {
-      let guestId = providedGuestId || cookieStore.get("guest_id")?.value;
+      // The durable HttpOnly cookie is authoritative. The body value is accepted
+      // only for one-time migration from older clients.
+      let guestId = cookieStore.get("guest_id")?.value || providedGuestId;
       if (!guestId) {
         guestId = randomUUID();
         newGuestIdToSet = guestId;

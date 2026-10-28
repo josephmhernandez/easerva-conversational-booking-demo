@@ -196,6 +196,23 @@ export const chatSessionsDB = {
     }
   },
 
+  async updateMachineSnapshot(
+    sessionId: string,
+    userId: string,
+    snapshot: Record<string, any>
+  ): Promise<void> {
+    const { error } = await supabase
+      .from("chat_sessions")
+      .update({
+        xstate_context: JSON.stringify(snapshot),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", sessionId)
+      .eq("user_id", userId);
+
+    if (error) throw error;
+  },
+
   // Deactivate session (start over)
   async deactivateSession(sessionId: string): Promise<void> {
     const { error } = await supabase

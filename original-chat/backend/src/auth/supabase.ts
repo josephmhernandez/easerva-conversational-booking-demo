@@ -18,8 +18,8 @@ console.log("✅ [Supabase] Initializing client with configured service credenti
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Test connection on startup
-(async () => {
+// Test connection on startup (skipped by isolated unit tests).
+if (process.env.SUPABASE_SKIP_CONNECTION_TEST !== "true") (async () => {
   try {
     // Make a simple query to test the connection
     const { error } = await supabase.from("chat_sessions").select("id").limit(1);

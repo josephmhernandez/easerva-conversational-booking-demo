@@ -184,22 +184,24 @@ Be as concise as possible.`;
 
       case "waiting for good search query":
         systemPrompt += `
-You are helping the user search this focused demo catalog:
+You are the booking assistant for this focused dog-walking demo:
 ${JSON.stringify(getServices())}
 
 SEARCH RULES:
-- If the user asks what is available, briefly list only these five categories.
-- As soon as the user gives both a category and a concrete need, call post-search-service-cards immediately.
+- The only available provider is Plano Paws and the only service is neighborhood dog walking in Plano, Texas.
+- If the user asks what is available, describe Plano Paws dog walking briefly.
+- As soon as the user asks for dog walking or pet walking, call post-search-service-cards immediately with category "Pet Services".
 - Do not ask the user to confirm that they want to see results. Showing results is the next step.
-- Location and budget are optional. Never block a search because either is missing.
-- Map printing, posters, business cards, banners, and document printing to "Printing Service".
-- Dog walking, grooming, pet sitting, and boarding map to "Pet Services".
-- Electrical, wiring, plumbing, HVAC, and handyman work map to "Home Services".
-- Portraits, events, headshots, and product photos map to "Photography".
-- Websites, IT support, automation, and cloud help map to "Technology Services".
+- Remember and naturally reuse pet details from conversation history, including name, breed, size, temperament, duration, and timing.
+- If the user asks for an unsupported service, explain that this portfolio demo currently focuses on dog walking.
 - Never say you are searching unless you call post-search-service-cards in the same turn.
 
 Be concise and move the user toward visible service cards.`;
+        break;
+
+      case "Search and scroll":
+        systemPrompt += `
+The Plano Paws dog-walking card is visible. Answer follow-up questions using the conversation history and the real card data in the workflow context. Remember pet details the user already gave you. Encourage the user to select the card when they are ready; do not restart the search or ask them to repeat known information.`;
         break;
       default:
         console.warn(
@@ -924,7 +926,7 @@ Be as concise as possible.`;
     currentMessage: string
   ): any[] {
     const messages: any[] = [];
-    const recentHistory = chatHistory.slice(-10);
+    const recentHistory = chatHistory.slice(-20);
 
     for (const entry of recentHistory) {
       messages.push({

@@ -12,7 +12,7 @@
     "start": "node dist/server.js",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run build && SUPABASE_URL=http://127.0.0.1:9 SUPABASE_SERVICE_ROLE_KEY=test-key SUPABASE_SKIP_CONNECTION_TEST=true node --test dist/mcp/*.test.js dist/mcp/machines/*.test.js"
   },
   "keywords": [],
   "author": "",

@@ -53,8 +53,20 @@ export type ServerEvent =
   | { type: "error"; sessionId?: UUID; code: string; message: string; ts: string }
   | { type: "ai.message"; sessionId: UUID; message: string; ts?: string; seq: number }
   | { type: "company.recommendations"; sessionId: UUID; companies: Company[]; ts?: string }
-  | { type: "time.slots.recommendations"; sessionId: UUID; timeSlots: TimeSlot[]; ts?: string }
-  | { type: "cards.search.results"; sessionId: UUID; cards: Card[]; ts?: string }
+  | {
+      type: "time.slots.recommendations";
+      sessionId: UUID;
+      timeSlots: TimeSlot[];
+      ts?: string;
+      restored?: boolean;
+    }
+  | {
+      type: "cards.search.results";
+      sessionId: UUID;
+      cards: Card[];
+      ts?: string;
+      restored?: boolean;
+    }
   | {
       type: "company.selection.confirmed";
       sessionId: UUID;

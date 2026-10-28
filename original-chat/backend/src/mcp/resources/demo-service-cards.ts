@@ -15,7 +15,10 @@ type DemoService = {
   priceMax?: number;
   duration: number;
   distance: number;
+  locationType?: "mobile" | "physical" | "virtual";
   badges: string[];
+  mediaUrl?: string;
+  profileImageUrl?: string;
 };
 
 const DEMO_SERVICES: DemoService[] = [
@@ -94,8 +97,11 @@ const DEMO_SERVICES: DemoService[] = [
     priceType: "fixed",
     priceCents: 2600,
     duration: 30,
-    distance: 3200,
+    distance: 0,
+    locationType: "mobile",
     badges: ["Insured", "GPS tracked", "Photo updates"],
+    mediaUrl: "/demo/plano-paws/dog-walking-hero.webp",
+    profileImageUrl: "/demo/plano-paws/walker-profile.webp",
   },
   {
     id: "pet-grooming",
@@ -307,13 +313,13 @@ function toCard(service: DemoService, relevanceScore: number): Card {
     card_type: "service",
     business_id: `demo-business-${service.id}`,
     business_name: service.business,
-    business_logo_url: null,
+    business_logo_url: service.profileImageUrl ?? null,
     display_name: service.name,
     tagline: service.tagline,
     description: service.description,
-    media_url: null,
+    media_url: service.mediaUrl ?? null,
     media_type: "image",
-    profile_image_url: null,
+    profile_image_url: service.profileImageUrl ?? null,
     cta_text: "View availability",
     service_id: `demo-service-${service.id}`,
     service_name: service.name,
@@ -326,13 +332,13 @@ function toCard(service: DemoService, relevanceScore: number): Card {
     duration_minutes: service.duration,
     location_id: `demo-location-${service.id}`,
     location_name: `${service.business} — ${service.city}`,
-    location_type: service.distance === 0 ? "virtual" : "physical",
+    location_type: service.locationType ?? (service.distance === 0 ? "virtual" : "physical"),
     location_city: service.city,
     location_state: "TX",
     distance_meters: service.distance,
     employee_id: null,
-    employee_name: null,
-    employee_title: null,
+    employee_name: service.id === "pet-dog-walking" ? "Maya" : null,
+    employee_title: service.id === "pet-dog-walking" ? "Insured dog walker" : null,
     relevance_score: relevanceScore,
     badges: ["Demo provider", ...service.badges],
   };
@@ -345,7 +351,7 @@ export function searchDemoServiceCards(params: SearchParams): Card[] {
   const limit = Math.min(Math.max(params.limit_results ?? 8, 1), 20);
   const offset = Math.max(params.offset_results ?? 0, 0);
 
-  return DEMO_SERVICES.filter((service) => {
+  return DEMO_SERVICES.filter((service) => service.id === "pet-dog-walking").filter((service) => {
     if (category && service.category.toLowerCase() !== category) return false;
     if (params.min_price_cents != null) {
       const highest = service.priceCents ?? service.priceMax ?? service.priceMin ?? 0;

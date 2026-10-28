@@ -392,7 +392,7 @@ export function ChatApp({ initialSession, initialMessages }: ChatAppProps) {
         {timeSlots.length > 0 && (
           <div className="animate-in fade-in slide-in-from-left duration-500">
             <AppointmentScheduler
-              businessName="Your Selected Company"
+              businessName="Plano Paws Dog Walking"
               availableSlots={timeSlots}
               onTimeSelect={(slot: TimeSlot) => {
                 if (webSocketSingleton.isConnected()) {
@@ -440,19 +440,19 @@ export function ChatApp({ initialSession, initialMessages }: ChatAppProps) {
             variant="outline"
             size="sm"
             className="bg-white text-gray-700 border-gray-200 hover:bg-gray-50 whitespace-nowrap rounded-full"
-            onClick={() => setChatInput("Printing consultation in Fort Worth")}
+            onClick={() => setChatInput("I need a dog walker in Plano")}
             disabled={!isConnected && isBusy}
           >
-            🖨️ Printing in Fort Worth
+            🐾 Dog walking in Plano
           </Button>
           <Button
             variant="outline"
             size="sm"
             className="bg-white text-gray-700 border-gray-200 hover:bg-gray-50 whitespace-nowrap rounded-full"
-            onClick={() => setChatInput("Pet services near Plano")}
+            onClick={() => setChatInput("My dog's name is Luna and she is nervous around large dogs")}
             disabled={!isConnected && isBusy}
           >
-            🐾 Pet services near Plano
+            🐕 Tell you about Luna
           </Button>
           <Button
             variant="outline"

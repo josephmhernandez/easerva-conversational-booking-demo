@@ -13,7 +13,7 @@ import { ChatSession } from "../database/types";
 import { ClaudeMCPClient } from "../mcp/claude-mcp-client";
 import { Company, TimeSlot } from "../mcp/machines/types";
 import { createMCPServerManager } from "../mcp/mcp-server-manager";
-import { addToChatHistory, getOrCreateActor } from "../mcp/session-store";
+import { getOrCreateActor, removeSessionActor } from "../mcp/session-store";
 import { Card, ClientEvent, ServerEvent, SnapshotMessage, UUID } from "../shared/protocol";
 import { emitPersisted } from "./websocketUtils";
 
@@ -31,11 +31,9 @@ const activeConnections = new Map<string, AuthenticatedWebSocket>();
 const userConnections = new Map<string, Set<string>>();
 const connectionRateLimit = new Map<string, number[]>();
 
-// Initialize MCP server manager
-const mcpManager = createMCPServerManager();
-
 // Session-based Claude clients
 const claudeClients: Record<string, ClaudeMCPClient> = {};
+const mcpManagers: Record<string, ReturnType<typeof createMCPServerManager>> = {};
 
 export function authenticateWebSocket(
   ws: WebSocket,
@@ -99,8 +97,8 @@ export function handleWebSocketConnection(ws: AuthenticatedWebSocket): void {
         if (!claudeClients[ws.userId]) {
           claudeClients[ws.userId] = new ClaudeMCPClient();
           await claudeClients[ws.userId].initialize();
-          // Set the tool executor
-          claudeClients[ws.userId].setToolExecutor(mcpManager);
+          mcpManagers[ws.userId] = createMCPServerManager();
+          claudeClients[ws.userId].setToolExecutor(mcpManagers[ws.userId]);
         }
 
         // ✅ LOAD OR CREATE SESSION LIKE YOUR WORKING VERSION
@@ -144,6 +142,7 @@ export function handleWebSocketConnection(ws: AuthenticatedWebSocket): void {
           turn: turn,
         };
         ws.send(JSON.stringify(sessionSnapshotEvent));
+        sendRestoredWorkflowState(ws, actor);
 
         /**
          * Checking the current state of the actor and doing appropriate actions to continue the workflow.
@@ -243,6 +242,36 @@ export function handleWebSocketConnection(ws: AuthenticatedWebSocket): void {
       clearInterval(heartbeat);
     }
   }, 30000);
+}
+
+function sendRestoredWorkflowState(
+  ws: AuthenticatedWebSocket,
+  actor: ActorRef<any, any>
+): void {
+  const snapshot = actor.getSnapshot();
+  const state =
+    typeof snapshot.value === "string" ? snapshot.value : Object.keys(snapshot.value)[0];
+
+  if (state === "waiting for a time slot answer" && snapshot.context.availableTimes?.length) {
+    const event: ServerEvent = {
+      type: "time.slots.recommendations",
+      sessionId: ws.sessionId!,
+      timeSlots: snapshot.context.availableTimes,
+      restored: true,
+    };
+    ws.send(JSON.stringify(event));
+    return;
+  }
+
+  if (state === "Search and scroll" && snapshot.context.cards?.length) {
+    const event: ServerEvent = {
+      type: "cards.search.results",
+      sessionId: ws.sessionId!,
+      cards: snapshot.context.cards,
+      restored: true,
+    };
+    ws.send(JSON.stringify(event));
+  }
 }
 
 // ✅ INITIALIZE SESSION LIKE YOUR WORKING VERSION
@@ -413,6 +442,7 @@ function handleDisconnection(ws: AuthenticatedWebSocket): void {
       if (claudeClients[ws.userId]) {
         claudeClients[ws.userId].disconnect();
         delete claudeClients[ws.userId];
+        delete mcpManagers[ws.userId];
       }
     }
   }
@@ -467,6 +497,8 @@ async function handleWebSocketMessage(ws: AuthenticatedWebSocket, message: Clien
   }
 
   console.log(`[handleWebSocketMessage] Updating tools for state: ${initialState}`);
+  const mcpManager = mcpManagers[ws.userId];
+  if (!mcpManager) throw new Error(`No MCP manager available for user ${ws.userId}`);
   mcpManager.updateToolsForState(initialState, actor);
   claudeClients[ws.userId].updateAvailableTools(mcpManager.getCurrentTools());
 
@@ -612,23 +644,16 @@ async function handleTimeSelected(
   try {
     // Send confirmation to user
     const confirmationMessage = `Great choice! You've selected ${timeSlot.date} at ${timeSlot.startTime}. Let's proceed with the next steps.`;
-    ws.send(
-      JSON.stringify({
-        type: "time_selection_confirmed",
-        timeSlot: timeSlot,
-        message: confirmationMessage,
-        timestamp: new Date().toISOString(),
-      })
-    );
+    await emitPersisted(ws, ws.sessionId, "time.selection.confirmed", {
+      timeSlot,
+      message: confirmationMessage,
+    });
     // Save response to database.
     // I don't think we need to do this... It should be handled in bookingMachine.ts.
     chatMessagesDB.addMessage(ws.sessionId, "assistant", confirmationMessage);
 
-    // Save time selection to chat history
-    addToChatHistory(ws.sessionId, "bot", confirmationMessage);
-
     actor.send({
-      type: "TIME_SELECTED",
+      type: "TIME_SLOT_SELECTED",
       output: { timeSlot: timeSlot as TimeSlot },
     });
   } catch (error) {
@@ -730,6 +755,10 @@ async function handleUserMessage(
       turn: "streaming",
     });
 
+    // Load prior durable turns first. ClaudeMCPClient appends the current text,
+    // so fetching before this insert avoids duplicating the newest user turn.
+    const chatHistory = await chatMessagesDB.getModelHistory(sessionId, 20);
+
     // 2) Persist to chat_messages (materialized view)
     await chatMessagesDB.addMessage(sessionId, "user", text);
 
@@ -739,7 +768,7 @@ async function handleUserMessage(
     // 4) Start the AI stream. ClaudeMCPClient owns the streamed assistant
     // message lifecycle: it persists the placeholder, emits deltas, finalizes
     // the database row, and emits the matching ai.done event.
-    await claudeClients[ws.userId].processUserMessage(ws, text, actor, []);
+    await claudeClients[ws.userId].processUserMessage(ws, text, actor, chatHistory);
     console.log(`[handleUserMessage] ✅ AI stream completed successfully`);
   } catch (error) {
     console.error(
@@ -795,6 +824,8 @@ async function handleNewSession(
 
   try {
     const oldSessionId = ws.sessionId;
+
+    if (oldSessionId) await removeSessionActor(oldSessionId);
 
     try {
       await chatSessionsDB.deactivateSession(oldSessionId!);

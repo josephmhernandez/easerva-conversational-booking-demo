@@ -83,30 +83,14 @@ export class SecureChatWebSocketClient {
       // Check if user is authenticated first
       const { isAuthenticated } = await this.checkAuthenticationStatus();
 
-      // Only set guest ID when user is not authenticated
-      let guestId: string | null = null;
-      if (!isAuthenticated) {
-        try {
-          guestId = typeof window !== "undefined" ? sessionStorage.getItem("guest_id") : null;
-          if (!guestId && typeof window !== "undefined") {
-            // Prefer crypto.randomUUID if available
-            const newId =
-              window.crypto && "randomUUID" in window.crypto
-                ? (window.crypto as Crypto & { randomUUID: () => string }).randomUUID()
-                : `guest_${Math.random().toString(36).slice(2)}_${Date.now()}`;
-            sessionStorage.setItem("guest_id", newId);
-            guestId = newId;
-            console.log("🆔 Created guest ID for unauthenticated user:", newId);
-          }
-        } catch {}
-      } else {
-        console.log("👤 User is authenticated, skipping guest ID creation");
-      }
+      // Guest identity is managed by the server's durable HttpOnly cookie. A
+      // browser-tab sessionStorage ID caused new tabs to create different chats.
+      if (isAuthenticated) console.log("👤 Using authenticated identity");
 
       const response = await fetch("/api/auth/websocket-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guestId }),
+        body: JSON.stringify({}),
       });
 
       if (!response.ok) {

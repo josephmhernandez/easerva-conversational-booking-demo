@@ -122,6 +122,13 @@ export const cardsMachine = setup({
         });
       }
     },
+    pushTimeSlotsToWebSocket: ({ context }) => {
+      if (context.socket && context.availableTimes) {
+        pushMessageToWs(context.socket, "waiting for a time slot answer", "", {
+          availableTimes: context.availableTimes,
+        });
+      }
+    },
     storeSelectedTimeSlot: assign({
       selectedTimeSlot: ({ event }) => {
         assertEvent(event, "TIME_SLOT_SELECTED");
@@ -173,7 +180,7 @@ export const cardsMachine = setup({
           }),
         },
         CARDS_RETURNED: {
-          target: "waiting for good search query",
+          target: "Search and scroll",
           actions: [
             ({ event }) => {
               assertEvent(event, "CARDS_RETURNED");
@@ -206,7 +213,7 @@ export const cardsMachine = setup({
       entry: ["logStateChange", "logCurrentContext"],
       on: {
         CARDS_RETURNED: {
-          target: "waiting for good search query",
+          target: "Search and scroll",
           actions: [
             ({ event }) => {
               assertEvent(event, "CARDS_RETURNED");
@@ -272,11 +279,14 @@ export const cardsMachine = setup({
             isMoreTimeSlots: false,
           }) as unknown as RecommendTimeSlotsCardsInput,
         onDone: {
-          actions: assign({
-            availableTimes: ({ event }) => {
-              return event.output?.timeSlots ?? null;
-            },
-          }),
+          actions: [
+            assign({
+              availableTimes: ({ event }) => {
+                return event.output?.timeSlots ?? null;
+              },
+            }),
+            "pushTimeSlotsToWebSocket",
+          ],
           target: "waiting for a time slot answer",
         },
         onError: {
