@@ -269,7 +269,11 @@ export function createMCPServerManager(): MCPServerManager {
   const updateToolsForState = (currentState: string, actor: any) => {
     // Combine global tools with state-specific tools
     const stateTools = STATE_SPECIFIC_TOOLS[currentState] || [];
-    currentTools = [...GLOBAL_TOOLS, ...stateTools];
+    const globalTools =
+      currentState === "waiting for good search query"
+        ? GLOBAL_TOOLS.filter((tool) => tool.name !== "get-current-state-context")
+        : GLOBAL_TOOLS;
+    currentTools = [...globalTools, ...stateTools];
 
     console.log(`[MCPManager:updateToolsForState] Updated tools for state: ${currentState}`, {
       globalTools: GLOBAL_TOOLS.length,
@@ -386,7 +390,7 @@ export function createMCPServerManager(): MCPServerManager {
       case "post-search-service-cards":
         console.log("[MCP] Searching for service cards:", args);
         const resPostSearchServiceCards = await postSearchServiceCards(actor, args as SearchParams);
-        return resPostSearchServiceCards.cardIds as string[];
+        return resPostSearchServiceCards.cards;
       default:
         throw new Error(`Unknown tool: ${toolName}`);
     }

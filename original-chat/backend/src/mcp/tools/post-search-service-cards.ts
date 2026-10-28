@@ -1,5 +1,6 @@
 import { supabase } from "../../auth/supabase";
 import { Card } from "../../shared/protocol";
+import { searchDemoServiceCards } from "../resources/demo-service-cards";
 
 export type SearchParams = {
   search_query?: string | null;
@@ -25,25 +26,33 @@ export async function postSearchServiceCards(actor: any, params: SearchParams): 
   const { data, error } = await supabase.rpc("search_service_cards", params);
 
   if (error) {
-    console.error("[MCP] Error searching for service cards:", error);
-    return {
-      success: false,
-      error: error.message,
-    };
+    console.warn("[MCP] Database card search unavailable; using demo catalog:", error.message);
   }
 
-  console.log("[MCP] Successfully searched for service cards:", data);
-  // Do we send this to the state machine now?...
+  const demoCards = searchDemoServiceCards(params);
+  const databaseCards = !error && Array.isArray(data) ? (data as Card[]) : [];
+  const uniqueCards = [...demoCards, ...databaseCards].filter(
+    (card, index, cards) => cards.findIndex((item) => item.card_id === card.card_id) === index
+  );
+  const limit = Math.min(Math.max(params.limit_results ?? 8, 1), 20);
+  const cards = uniqueCards.slice(0, limit);
+
+  console.log("[MCP] Service card search complete:", {
+    demoCards: demoCards.length,
+    databaseCards: databaseCards.length,
+    returnedCards: cards.length,
+  });
 
   actor.send({
     type: "CARDS_RETURNED",
     output: {
-      cards: data as Card[],
+      cards,
     },
   });
 
   return {
     success: true,
-    cards: data as Card[],
+    cards,
+    source: databaseCards.length > 0 ? "demo-and-database" : "demo-catalog",
   };
 }

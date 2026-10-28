@@ -1,54 +1,70 @@
-import { Card } from "../../../shared/protocol";
-import { TimeSlot } from "../types";
+import type { Card } from "../../../shared/protocol";
+import type { TimeSlot } from "../types";
+
+function nextBusinessDay(offset: number): string {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  let remaining = offset;
+
+  while (remaining > 0) {
+    date.setDate(date.getDate() + 1);
+    if (date.getDay() !== 0 && date.getDay() !== 6) remaining -= 1;
+  }
+
+  return date.toISOString().slice(0, 10);
+}
 
 export const getTimeSlotsForCard = async (
   card: Card,
   isMoreTimeSlots: boolean
 ): Promise<TimeSlot[]> => {
-  console.log("TODO: complete this method: getTimeSlotsForCard: ", card, isMoreTimeSlots);
+  console.log("[Booking] Generating demo availability:", card.card_id, isMoreTimeSlots);
 
-  // Wait for 2 seconds
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 250));
+
+  const firstDay = nextBusinessDay(isMoreTimeSlots ? 4 : 1);
+  const secondDay = nextBusinessDay(isMoreTimeSlots ? 5 : 2);
+  const durationMinutes = card.duration_minutes ?? 60;
 
   const mockTimeSlots = [
     {
       id: "1",
-      date: "2024-01-15",
+      date: firstDay,
       startTime: "9:00 AM",
       endTime: "10:00 AM",
-      durationMinutes: 60,
+      durationMinutes,
       available: true,
     },
     {
       id: "2",
-      date: "2024-01-15",
+      date: firstDay,
       startTime: "10:00 AM",
       endTime: "11:00 AM",
-      durationMinutes: 60,
+      durationMinutes,
       available: true,
     },
     {
       id: "3",
-      date: "2024-01-15",
+      date: firstDay,
       startTime: "2:00 PM",
       endTime: "3:00 PM",
-      durationMinutes: 60,
+      durationMinutes,
       available: true,
     },
     {
       id: "4",
-      date: "2024-01-16",
+      date: secondDay,
       startTime: "9:00 AM",
       endTime: "10:00 AM",
-      durationMinutes: 60,
+      durationMinutes,
       available: true,
     },
     {
       id: "5",
-      date: "2024-01-16",
+      date: secondDay,
       startTime: "11:00 AM",
       endTime: "12:00 PM",
-      durationMinutes: 60,
+      durationMinutes,
       available: true,
     },
   ];

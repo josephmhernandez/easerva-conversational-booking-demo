@@ -181,6 +181,26 @@ Be as concise as possible.`;
         Be super brief and to the point. Politely ask the user to sign in or sign up to book their appointment. It is crucial that the user books their appointment with a verified email address.
         `;
         break;
+
+      case "waiting for good search query":
+        systemPrompt += `
+You are helping the user search this focused demo catalog:
+${JSON.stringify(getServices())}
+
+SEARCH RULES:
+- If the user asks what is available, briefly list only these five categories.
+- As soon as the user gives both a category and a concrete need, call post-search-service-cards immediately.
+- Do not ask the user to confirm that they want to see results. Showing results is the next step.
+- Location and budget are optional. Never block a search because either is missing.
+- Map printing, posters, business cards, banners, and document printing to "Printing Service".
+- Dog walking, grooming, pet sitting, and boarding map to "Pet Services".
+- Electrical, wiring, plumbing, HVAC, and handyman work map to "Home Services".
+- Portraits, events, headshots, and product photos map to "Photography".
+- Websites, IT support, automation, and cloud help map to "Technology Services".
+- Never say you are searching unless you call post-search-service-cards in the same turn.
+
+Be concise and move the user toward visible service cards.`;
+        break;
       default:
         console.warn(
           `[claude-mcp-client:createSystemPrompt] Creating system prompt for state: ${currentState}. Ensure that really don't need a system prompt for this state!`

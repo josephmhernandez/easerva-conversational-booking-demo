@@ -1,54 +1,25 @@
-/**
- * 
- * @returns export const BUSINESS_CATEGORIES = [
-  "Beauty",
-  "Medical",
-  "Legal",
-  "Real Estate",
-  "Home Services",
-  "Fitness",
-  "Education",
-  "Pet Services",
-  "Food and Beverage",
-  "Automotive",
-  "Entertainment",
-  "Professional Services",
-  "Financial Services",
-  "Travel and Tourism",
-  "Event Planning",
-  "Technology Services",
-  "Retail and Shopping",
-  "Wellness and Counseling",
-  "Child Care and Family Services",
-  "Photography",
-  "Art and Design",
-  "Other",
-];
- */
+/** The intentionally small set of categories backed by the public demo catalog. */
 export function getServices(): { id: string; description: string }[] {
   return [
-    { id: "Beauty", description: "Beauty services and treatments" },
-    { id: "Medical", description: "Medical services and treatments" },
-    { id: "Legal", description: "Legal services and consultations" },
-    { id: "Real Estate", description: "Real estate services and listings" },
-    { id: "Home Services", description: "Home services and maintenance" },
-    { id: "fitness", description: "Fitness and wellness services" },
-    { id: "Education", description: "Education and tutoring services" },
-    { id: "Pet Services", description: "Pet services and care" },
-    { id: "Food and Beverage", description: "Food and beverage services" },
-    { id: "Automotive", description: "Automotive services and repairs" },
-    { id: "entertainment", description: "Entertainment and event planning" },
-    { id: "Professional Services", description: "Professional services and consulting" },
-    { id: "Financial Services", description: "Financial services and investment" },
-    { id: "Travel and Tourism", description: "Travel and tourism services" },
-    { id: "Event Planning", description: "Event planning and management" },
-    { id: "Technology Services", description: "Technology services and consulting" },
-    { id: "Retail and Shopping", description: "Retail shopping and shopping services" },
-    { id: "Wellness and Counseling", description: "Wellness and counseling services" },
-    { id: "Child Care and Family Services", description: "Child care and family services" },
-    { id: "Photography", description: "Photography and videography services" },
-    { id: "Printing Service", description: "Printing, signage, and consultation services" },
-    { id: "Art and Design", description: "Art and design services" },
-    { id: "Other", description: "Other services and consulting" },
+    {
+      id: "Printing Service",
+      description: "Business cards, posters, banners, signs, and document printing",
+    },
+    {
+      id: "Pet Services",
+      description: "Dog walking, grooming, pet sitting, and boarding",
+    },
+    {
+      id: "Home Services",
+      description: "Electrical, plumbing, HVAC, and handyman services",
+    },
+    {
+      id: "Photography",
+      description: "Portrait, event, product, and commercial photography",
+    },
+    {
+      id: "Technology Services",
+      description: "Web development, IT support, automation, and cloud consulting",
+    },
   ];
 }
