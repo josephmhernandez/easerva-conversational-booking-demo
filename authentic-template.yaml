@@ -29,6 +29,8 @@ Parameters:
     Type: String
   JwtSecretArn:
     Type: String
+  GeminiApiSecretArn:
+    Type: String
   BuildSourceBucket:
     Type: String
   BuildSourceKey:
@@ -40,7 +42,7 @@ Parameters:
     AllowedValues: [0, 1]
   ImageTag:
     Type: String
-    Default: authentic-v5
+    Default: gemini-v5
 
 Resources:
   Repository:
@@ -99,7 +101,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
-                Resource: [!Ref SupabaseServiceSecretArn, !Ref JwtSecretArn]
+                Resource: [!Ref SupabaseServiceSecretArn, !Ref JwtSecretArn, !Ref GeminiApiSecretArn]
 
   TaskRole:
     Type: AWS::IAM::Role
@@ -110,16 +112,6 @@ Resources:
           - Effect: Allow
             Principal: {Service: ecs-tasks.amazonaws.com}
             Action: sts:AssumeRole
-      Policies:
-        - PolicyName: ClaudeThroughBedrock
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
-                  - !Sub "arn:${AWS::Partition}:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
 
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -147,8 +139,7 @@ Resources:
             - {Name: PORT, Value: "3001"}
             - {Name: NODE_ENV, Value: production}
             - {Name: AWS_REGION, Value: !Ref AWS::Region}
-            - {Name: USE_BEDROCK, Value: "true"}
-            - {Name: BEDROCK_MODEL_ID, Value: us.anthropic.claude-haiku-4-5-20251001-v1:0}
+            - {Name: GEMINI_MODEL, Value: gemini-3.8-flash}
             - {Name: FRONTEND_URL, Value: "https://chat-demo.josephmhernandez.com"}
             - {Name: NEXT_PUBLIC_APP_URL, Value: "https://chat-demo.josephmhernandez.com"}
             - {Name: NEXT_PUBLIC_BACKEND_URL, Value: "https://chat-demo.josephmhernandez.com"}
@@ -161,6 +152,7 @@ Resources:
           Secrets:
             - {Name: SUPABASE_SERVICE_ROLE_KEY, ValueFrom: !Ref SupabaseServiceSecretArn}
             - {Name: JWT_WEBSOCKET_SECRET, ValueFrom: !Ref JwtSecretArn}
+            - {Name: GEMINI_API_KEY, ValueFrom: !Ref GeminiApiSecretArn}
           LogConfiguration:
             LogDriver: awslogs
             Options:

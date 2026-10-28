@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { AnthropicBedrock } from "@anthropic-ai/bedrock-sdk";
 import { ActorRef } from "xstate";
 import { STREAM_TOOL_CHECK_CHUNK_COUNT } from "../constants/mcpConstants";
 import { chatMessagesDB } from "../database/chat-messages";
@@ -13,6 +12,7 @@ import {
 import { MCPServerManager } from "./mcp-server-manager";
 import { getServices } from "./resources/get-services";
 import { getCurrentCompanies } from "./tools/get-current-companies";
+import { GeminiAnthropicAdapter } from "./gemini-anthropic-adapter";
 
 interface MCPTool {
   name: string;
@@ -53,22 +53,20 @@ export class ClaudeMCPClient {
   // "claude-3-7-sonnet-20250219"
   constructor(
     apiKey?: string,
-    model = process.env.BEDROCK_MODEL_ID || "claude-3-7-sonnet-20250219"
+    model = process.env.GEMINI_MODEL || "gemini-3.8-flash"
   ) {
-    console.log("🤖 Initializing Claude MCP Client");
-    this.anthropic = process.env.USE_BEDROCK === "true"
-      ? (new AnthropicBedrock({
-          awsRegion: process.env.AWS_REGION || "us-east-1",
-        }) as unknown as Anthropic)
-      : new Anthropic({apiKey: apiKey || process.env.CLAUDE_API_KEY});
+    console.log("🤖 Initializing Gemini MCP Client");
+    this.anthropic = new GeminiAnthropicAdapter(
+      apiKey || process.env.GEMINI_API_KEY
+    ) as unknown as Anthropic;
     this.model = model;
   }
 
   async initialize() {
     try {
-      console.log("[Claude MCP] Client initialized");
+      console.log("[Gemini MCP] Client initialized");
     } catch (error) {
-      console.error("[Claude MCP] Failed to initialize:", error);
+      console.error("[Gemini MCP] Failed to initialize:", error);
       throw error;
     }
   }
@@ -636,8 +634,21 @@ Be as concise as possible.`;
 
     const messages = this.formatMessages(chatHistory, originalMessage);
 
-    // Add tool use and results to message history
-    // ... (format tool messages as in your original code)
+    // Return completed tool results as explicit context for the final answer.
+    // Gemini's compatibility endpoint rejects tool-role history when the
+    // follow-up intentionally omits tool definitions to prevent a second,
+    // unnecessary tool-call loop.
+    if (toolResults.length > 0) {
+      messages.push({
+        role: "user",
+        content: `The booking server executed these tools. Use their real results to answer the user's request; do not claim that you called another tool.\n${toolResults
+          .map(
+            (result) =>
+              `<tool_result name="${result.name}" input='${JSON.stringify(result.input)}'>${result.content}</tool_result>`
+          )
+          .join("\n")}`,
+      });
+    }
 
     const streamController = this.createStreamController(message_.streamId!);
     this.activeStreams.set(message_.streamId!, streamController);
@@ -769,6 +780,8 @@ Be as concise as possible.`;
           return {
             tool_use_id: toolUse.id,
             type: "tool_result",
+            name: toolUse.name,
+            input: toolUse.input,
             content: JSON.stringify(toolResult),
           };
         } catch (err) {
@@ -776,6 +789,8 @@ Be as concise as possible.`;
           return {
             tool_use_id: toolUse.id,
             type: "tool_result",
+            name: toolUse.name,
+            input: toolUse.input,
             content: JSON.stringify({
               error: true,
               message: `Tool "${toolUse.name}" failed.`,
